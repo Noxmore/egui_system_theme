@@ -6,6 +6,9 @@ pub use dark_light;
 pub(crate) use egui::*;
 pub(crate) use once_cell::sync::Lazy;
 
+pub mod util;
+pub(crate) use util::*;
+
 #[cfg(target_os = "windows")]
 pub mod windows;
 #[cfg(target_os = "windows")]
