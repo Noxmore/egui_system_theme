@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-configparser = "3.0.4"
-# cssparser = "0.34.0"
-# style = { git = "https://github.com/servo/stylo.git", rev = "5e112c7", package = "style", features = ["servo"] }
 dark-light = "1.1.1"
 egui = "^0.27"
 once_cell = "1.19.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+configparser = "3.0.4"
 lightningcss = "1.0.0-alpha.57"
 palette = "0.7.6"
 

@@ -1,7 +1,5 @@
 use std::error::Error;
 
-use configparser::ini::Ini;
-
 pub use dark_light;
 pub(crate) use egui::*;
 pub(crate) use once_cell::sync::Lazy;
@@ -43,38 +41,14 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
 
 pub trait VisualsExt {
     /// The color of the window titlebar when using system theme.
-    fn titlebar(&self) -> Color32;
+    fn titlebar(&self, focused: bool) -> Color32;
 }
 impl VisualsExt for Visuals {
-    fn titlebar(&self) -> Color32 {
-        self.widgets.noninteractive.weak_bg_fill
-    }
-}
-
-pub trait IniExt {
-    fn get_color(&self, section: &str, key: &str) -> Result<Color32, std::io::Error>;
-}
-impl IniExt for Ini {
-    fn get_color(&self, section: &str, key: &str) -> Result<Color32, std::io::Error> {
-        let input = self.get(section, key).ok_or_else(|| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!("color not found: section {section}, key: {key}"),
-            )
-        })?;
-
-        let mut numbers = input.split(',').map(|n| n.trim().parse::<u8>());
-        let mut get_number = || {
-            numbers.next().map(Result::ok).flatten().ok_or_else(|| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, format!("color {input}"))
-            })
-        };
-
-        Ok(Color32::from_rgba_premultiplied(
-            get_number()?,
-            get_number()?,
-            get_number()?,
-            get_number().unwrap_or(255),
-        ))
+    fn titlebar(&self, focused: bool) -> Color32 {
+        if focused {
+            self.widgets.noninteractive.weak_bg_fill
+        } else {
+            self.panel_fill
+        }
     }
 }

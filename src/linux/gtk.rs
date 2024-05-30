@@ -1,147 +1,15 @@
-use std::{collections::HashMap, env, error::Error, fs, io, path::Path};
+//! GTK parsing is so beefy that it gets it's own module.
+//! We'll have to create part of a css interpreter to parse it correctly, luckily we have lightningcss to make us an AST!
 
-use configparser::ini::Ini;
+use std::{collections::HashMap, error::Error, fs, path::Path};
+
 use epaint::Shadow;
-use lightningcss::{printer::PrinterOptions, properties::{border::BorderSideWidth, custom::{Function, Token, TokenOrValue, UnparsedProperty}, Property, PropertyId}, rules::{style::StyleRule, unknown::UnknownAtRule, CssRule, CssRuleList}, selector::{Component, Selector}, stylesheet::{MinifyOptions, ParserOptions, StyleSheet}, targets::{Features, Targets}, traits::ToCss, values::{color::{CssColor, FloatColor, LABColor, PredefinedColor, HSL, HWB, RGBA, SRGB}, length::{Length, LengthValue}, percentage::DimensionPercentage}};
+use lightningcss::{printer::PrinterOptions, properties::{border::BorderSideWidth, custom::{Function, Token, TokenOrValue, UnparsedProperty}, Property, PropertyId}, rules::{style::StyleRule, CssRule}, stylesheet::{MinifyOptions, ParserOptions, StyleSheet}, targets::{Features, Targets}, traits::ToCss, values::{color::{CssColor, FloatColor, LABColor, PredefinedColor, RGBA, SRGB}, length::{Length, LengthValue}, percentage::DimensionPercentage}};
 use palette::{IntoColor, WithAlpha};
 
 use crate::*;
 
-pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
-    style_gtk(style, 4).or_else(|_| style_gtk(style, 3))?;
-    return Ok(());
-    
-    if env::var("XDG_CURRENT_DESKTOP") == Ok("KDE".to_string())
-        || env::var("DESKTOP_SESSION") == Ok("plasma".to_string())
-    {
-        style_kde(style)?;
-    } else {
-        style_gtk(style, 4).or_else(|_| style_gtk(style, 3))?;
-    }
-
-    // DesktopEnvironment::Cinnamon => detect_gtk("/org/cinnamon/desktop/interface/gtk-theme"),
-    // DesktopEnvironment::Gnome => detect_gtk("/org/gnome/desktop/interface/gtk-theme"),
-    // DesktopEnvironment::Mate => detect_gtk("/org/mate/desktop/interface/gtk-theme"),
-    // DesktopEnvironment::Unity => detect_gtk("/org/gnome/desktop/interface/gtk-theme"),
-
-    Ok(())
-}
-
-#[rustfmt::skip] // I want these macro calls to stay in one line each
-pub fn style_kde(style: &mut Style) -> Result<(), Box<dyn Error>> {
-    // TODO fonts
-    let mut kdeglobals = Ini::new();
-    kdeglobals.load(Path::new(&env::var("HOME")?).join(".config/kdeglobals"))?;
-
-    macro_rules! set_color {($path:expr, $section:expr, $key:expr) => {
-        if let Ok(color) = kdeglobals.get_color($section, $key) {
-            $path = color;
-        }
-    };}
-    macro_rules! set_stroke {($path:expr, $section:expr, $key:expr, $width:expr) => {
-        if let Ok(color) = kdeglobals.get_color($section, $key) {
-            $path = Stroke::new($width, color);
-        }
-    };}
-
-    set_color!(style.visuals.widgets.noninteractive.bg_fill, "Colors:Window", "BackgroundNormal");
-    set_color!(style.visuals.widgets.noninteractive.weak_bg_fill, "Colors:Header", "BackgroundNormal");
-    set_stroke!(style.visuals.widgets.noninteractive.fg_stroke, "Colors:Window", "ForegroundNormal", 1.);
-    set_stroke!(style.visuals.widgets.noninteractive.fg_stroke, "WM", "activeForeground", 1.);
-    set_stroke!(style.visuals.widgets.noninteractive.bg_stroke, "Colors:Window", "ForegroundNormal", 0.5); // TODO
-    set_stroke!(style.visuals.widgets.noninteractive.bg_stroke, "WM", "inactiveBlend", 0.5);
-
-    set_color!(style.visuals.widgets.inactive.bg_fill, "Colors:View", "BackgroundNormal"); // TODO dark
-    set_color!(style.visuals.widgets.inactive.weak_bg_fill, "Colors:Button", "BackgroundNormal");
-    set_stroke!(style.visuals.widgets.inactive.fg_stroke, "Colors:Button", "ForegroundNormal", 1.);
-    set_stroke!(style.visuals.widgets.inactive.bg_stroke, "Colors:Button", "ForegroundInactive", 1.);
-
-    set_color!(style.visuals.widgets.hovered.bg_fill, "Colors:Button", "BackgroundNormal");
-    set_color!(style.visuals.widgets.hovered.weak_bg_fill, "Colors:Button", "BackgroundNormal");
-    set_stroke!(style.visuals.widgets.hovered.fg_stroke, "Colors:Button", "ForegroundNormal", 1.);
-    set_stroke!(style.visuals.widgets.hovered.bg_stroke, "Colors:Button", "DecorationHover", 1.);
-
-    set_color!(style.visuals.widgets.active.bg_fill, "Colors:Button", "BackgroundAlternate");
-    set_color!(style.visuals.widgets.active.weak_bg_fill, "Colors:Button", "BackgroundAlternate");
-    set_stroke!(style.visuals.widgets.active.fg_stroke, "Colors:Button", "ForegroundNormal", 1.);
-    set_stroke!(style.visuals.widgets.active.bg_stroke, "Colors:Button", "DecorationFocus", 1.);
-
-    set_color!(style.visuals.widgets.open.bg_fill, "Colors:Button", "BackgroundAlternate");
-    set_color!(style.visuals.widgets.open.weak_bg_fill, "Colors:Header", "BackgroundNormal");
-    set_stroke!(style.visuals.widgets.open.fg_stroke, "Colors:Button", "ForegroundVisited", 1.);
-    set_stroke!(style.visuals.widgets.open.bg_stroke, "Colors:Button", "DecorationFocus", 1.);
-
-
-    set_color!(style.visuals.hyperlink_color, "Colors:Button", "ForegroundLink");
-    set_color!(style.visuals.panel_fill, "Colors:Window", "BackgroundNormal");
-    set_color!(style.visuals.panel_fill, "WM", "inactiveBackground");
-    set_color!(style.visuals.window_fill, "Colors:Window", "BackgroundNormal");
-    set_stroke!(style.visuals.window_stroke, "Colors:Window", "ForegroundNormal", 0.5);
-    set_stroke!(style.visuals.window_stroke, "WM", "inactiveBlend", 0.5);
-    style.visuals.window_shadow = Shadow {
-        offset: vec2(0., 10.),
-        blur: 30.,
-        spread: 10.,
-        color: Color32::from_rgba_premultiplied(0, 0, 0, 50),
-    };
-
-    set_color!(style.visuals.code_bg_color, "Colors:View", "BackgroundNormal");
-    set_color!(style.visuals.extreme_bg_color, "Colors:View", "BackgroundNormal");
-    set_color!(style.visuals.faint_bg_color, "Colors:Tooltip", "BackgroundNormal"); // This is Header on breeze
-
-    set_color!(style.visuals.selection.bg_fill, "Colors:Selection", "BackgroundAlternate");
-    set_stroke!(style.visuals.selection.stroke, "Colors:Selection", "ForegroundNormal", 1.);
-
-    style.visuals.widgets.active.expansion = 0.;
-    style.visuals.widgets.hovered.expansion = 0.;
-    style.visuals.widgets.noninteractive.expansion = 0.;
-    style.visuals.widgets.open.expansion = 0.;
-
-    style.spacing.window_margin = Margin::same(2.);
-    style.spacing.menu_margin = Margin::same(4.);
-
-    Ok(())
-}
-
-// GTK themes are not nearly as easy to parse as KDE themes.
-// We'll have to create part of a css interpreter to do this, luckily we have lightningcss to make us an AST!
-
-/// Modifies a style to use the current GTK(version) theme.
-pub fn style_gtk(style: &mut Style, version: u8) -> Result<(), Box<dyn Error>> {
-    // TODO fonts
-    let mut gtk_settings = Ini::new();
-    gtk_settings.load(Path::new(&env::var("HOME")?).join(format!(".config/gtk-{version}.0/settings.ini")))?;
-    let theme_name = gtk_settings.get("Settings", "gtk-theme-name").ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Could not get gtk-theme-name in gtk4 settings.ini"))?;
-    let dark_mode = *DARK_LIGHT_MODE != dark_light::Mode::Light;
-    let css_file_name = if dark_mode { "gtk-dark.css" } else { "gtk.css" };
-    let path = [
-        // All paths the css file we're looking for could be, chooses the first one that exists
-        Path::new(&env::var("HOME")?).join(format!(".themes/{theme_name}/gtk-{version}.0/{css_file_name}")),
-        Path::new(&env::var("HOME")?).join(format!(".themes/{theme_name}/gtk-{version}.0/gtk.css")), // Fallback if we are in dark mode and gtk-dark.css does not exist
-        format!("/usr/share/themes/{theme_name}/gtk-{version}.0/{css_file_name}").into(),
-        format!("/usr/share/themes/{theme_name}/gtk-{version}.0/gtk.css").into(),
-    ].into_iter().find(|path| path.exists()).ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("Could not find gtk.css or gtk-dark.css file for theme {theme_name}")))?;
-    
-
-    let mut ctx = GtkCssParseContext::default();
-    style_gtk_css(style, &path, &mut ctx)?;
-    // println!("{ctx:#?}");
-
-    
-    // let mut new_files = Vec::new();
-    // resolve_css_imports(&mut stylesheet.rules, &path, &mut new_files)?;
-    
-    // println!("{:#?}", stylesheet);
-
-    // style_gtk_css(style, &stylesheet.rules, &path)?;
-    
-    // let mut parser_input = ParserInput::new(&css_content);
-    // let mut parser = Parser::new(&mut parser_input);
-    // cssparser::
-    // let rules = RuleBodyParser::new(&mut parser, &mut parser);
-
-    Ok(())
-}
+// NOTE: I'm nowhere near an expert on creating interpreters, so don't expect anything pretty!
 
 macro_rules! css_values {
     {$($name:ident($ty:ty) $as_fn:ident),* $(,)?} => {
@@ -287,7 +155,14 @@ impl GtkCssParseContext {
             Property::Border(border) => Some(convert_css_color(&border.color)),
             Property::BorderColor(color) => Some(convert_css_color(&color.top)),
             Property::Unparsed(UnparsedProperty { property_id: PropertyId::BorderColor | PropertyId::Border, value }) => {
-                value.0.iter().eval(self).as_color()
+                // Just parse until we run out of tokens or we hit a valid color
+                let mut tokens = value.0.iter();
+                for _ in 0..value.0.len() {
+                    if let Some(color) = tokens.eval(self).as_color() {
+                        return Some(color);
+                    }
+                }
+                None
             },
             
             _ => None,
@@ -297,6 +172,9 @@ impl GtkCssParseContext {
         match property {
             Property::Border(border) => Some(convert_border_side_width(&border.width)),
             Property::BorderWidth(width) => Some(convert_border_side_width(&width.top)),
+            Property::Unparsed(UnparsedProperty { property_id: PropertyId::BorderColor | PropertyId::Border, value }) => {
+                value.0.iter().eval(self).as_number()
+            },
             
             _ => None,
         }
@@ -326,6 +204,26 @@ impl GtkCssParseContext {
             for (_, rounding) in dst {
                 *rounding = border_radius;
             }
+        }
+    }
+
+    pub fn extract_shadow(&self, property: &Property) -> Option<Shadow> {
+        match property {
+            Property::BoxShadow(shadow, _) => {
+                let shadow = shadow.first()?;
+                if shadow.inset {
+                    return None; // inset shadows are currently not supported by egui
+                }
+
+                Some(Shadow {
+                    offset: vec2(convert_length(&shadow.x_offset), convert_length(&shadow.y_offset)),
+                    blur: convert_length(&shadow.blur),
+                    spread: convert_length(&shadow.spread),
+                    color: convert_css_color(&shadow.color),
+                })
+            }
+            
+            _ => None
         }
     }
 }
@@ -377,9 +275,7 @@ pub fn style_gtk_css(style: &mut Style, path: &Path, ctx: &mut GtkCssParseContex
                     _ => {}
                 }
             }
-            rule => {
-                // println!("Rule ignored: {rule:?}");
-            }
+            _ => {}
         }
     }
 
@@ -389,10 +285,13 @@ pub fn style_gtk_css(style: &mut Style, path: &Path, ctx: &mut GtkCssParseContex
 fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule) -> Result<(), Box<dyn Error>> {
     for selectors in &rule.selectors.0 {
         /* for selector in selectors.iter() {
-            if let Component::Class(id) = selector {
-                if id.to_string() == ".background" || id.to_string() == "background" || id.to_string() == "headerbar" || id.to_string() == "button" {
-                    println!("{id:?}");
+            /* if let Component::ID(id) = selector {
+                if id.to_string() == "selection" {
+                    println!("{:?}", rule.selectors);
                 }
+            } */
+            if let Component::Combinator(_) = selector {
+                println!("{:?}", rule.selectors);
             }
         } */
         // let selectors = selectors.iter().collect::<Vec<_>>();
@@ -414,6 +313,7 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(bg_color) = ctx.extract_background_color(property) {
                     style.visuals.widgets.open.weak_bg_fill = bg_color;
                     style.visuals.widgets.open.bg_fill = bg_color;
+                    style.visuals.faint_bg_color = bg_color;
                 }
                 if let Some(fg_color) = ctx.extract_foreground_color(property) {
                     style.visuals.widgets.open.fg_stroke = Stroke::new(1., fg_color);
@@ -442,7 +342,6 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
             }
         } else if selector == "button:hover" {
             // I'm assuming that button comes before button:hover here
-            println!("{rule:#?}");
             for (property, _important) in rule.declarations.iter() {
                 if let Some(bg_color) = ctx.extract_background_color(property) {
                     style.visuals.widgets.hovered.weak_bg_fill = bg_color;
@@ -454,7 +353,6 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 ctx.extract_border_into(property, [(&mut style.visuals.widgets.hovered.bg_stroke, &mut style.visuals.widgets.hovered.rounding)]);
             }
         } else if selector == "button:active" {
-            println!("{rule:#?}");
             for (property, _important) in rule.declarations.iter() {
                 if let Some(bg_color) = ctx.extract_background_color(property) {
                     style.visuals.widgets.active.weak_bg_fill = bg_color;
@@ -463,7 +361,38 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(fg_color) = ctx.extract_foreground_color(property) {
                     style.visuals.widgets.active.fg_stroke = Stroke::new(1., fg_color);
                 }
-                ctx.extract_border_into(property, [(&mut style.visuals.widgets.active.bg_stroke, &mut style.visuals.widgets.active.rounding)]);
+                ctx.extract_border_into(property, [
+                    (&mut style.visuals.widgets.active.bg_stroke, &mut style.visuals.widgets.active.rounding),
+                    (&mut style.visuals.widgets.open.bg_stroke, &mut style.visuals.widgets.open.rounding),
+                ]);
+            }
+        } else if selector == "selection" || selector == "label selection" || selector == "entry selection" || selector == "entry > text > selection" || selector == "label > selection" {
+            for (property, _important) in rule.declarations.iter() {
+                if let Some(bg_color) = ctx.extract_background_color(property) {
+                    style.visuals.selection.bg_fill = bg_color;
+                    style.visuals.hyperlink_color = bg_color;
+                }
+                if let Some(fg_color) = ctx.extract_foreground_color(property) {
+                    style.visuals.selection.stroke = Stroke::new(1., fg_color);
+                }
+            }
+        } else if selector == "entry" {
+            for (property, _important) in rule.declarations.iter() {
+                if let Some(bg_color) = ctx.extract_background_color(property) {
+                    style.visuals.code_bg_color = bg_color;
+                    style.visuals.extreme_bg_color = bg_color;
+                }
+            }
+        } else if selector == "window" {
+            for (property, _important) in rule.declarations.iter() {
+                if let Some(shadow) = ctx.extract_shadow(property) {
+                    style.visuals.window_shadow = shadow;
+                }
+                ctx.extract_border_into(property, [(&mut style.visuals.window_stroke, &mut style.visuals.window_rounding)]);
+            }
+        } else if selector == ".frame" {
+            for (property, _important) in rule.declarations.iter() {
+                ctx.extract_border_into(property, [(&mut style.visuals.widgets.noninteractive.bg_stroke, &mut style.visuals.widgets.noninteractive.rounding)]);
             }
         }
     }
@@ -471,11 +400,13 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
     Ok(())
 }
 
-pub const fn convert_rgba(rgba: RGBA) -> Color32 {
-    Color32::from_rgba_premultiplied(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+// Conversions to interface with lightningcss
+
+pub fn convert_rgba(rgba: RGBA) -> Color32 {
+    Color32::from_rgba_unmultiplied(rgba.red, rgba.green, rgba.blue, rgba.alpha)
 }
 pub fn convert_srgb(srgb: SRGB) -> Color32 {
-    Color32::from_rgba_premultiplied((srgb.r * 255.) as u8, (srgb.g * 255.) as u8, (srgb.b * 255.) as u8, (srgb.alpha * 255.) as u8)
+    Color32::from_rgba_unmultiplied((srgb.r * 255.) as u8, (srgb.g * 255.) as u8, (srgb.b * 255.) as u8, (srgb.alpha * 255.) as u8)
 }
 pub fn convert_to_srgb(color: Color32) -> SRGB {
     SRGB { r: color.r() as f32 / 255., g: color.g() as f32 / 255., b: color.b() as f32 / 255., alpha: color.a() as f32 / 255. }
@@ -537,29 +468,3 @@ fn printer_options<'a>() -> PrinterOptions<'a> {
         ..Default::default()
     }
 }
-
-/* fn resolve_css_imports<'a>(rules: &mut CssRuleList<'a>, path: &Path, new_files: &'a mut Vec<String>) -> Result<(), Box<dyn Error>> {
-    let mut replaced = Vec::new();
-    
-    for (i, rule) in rules.0.iter().enumerate() {
-        if let CssRule::Import(rule) = rule {
-            replaced.push((i, rule.url.clone()))
-        }
-    }
-
-    for (i, new_path) in replaced.into_iter().rev() {
-        let path = path.join(new_path.to_string());
-        new_files.push(fs::read_to_string(&path)?);
-        
-        let mut stylesheet = StyleSheet::parse(new_files.last().unwrap(), ParserOptions {
-            filename: path.display().to_string(),
-            ..Default::default()
-        }).map_err(|err| err.to_string())?;
-    
-        resolve_css_imports(&mut stylesheet.rules, &path, new_files)?;
-        
-        rules.0.splice(i..=i, stylesheet.rules.0.into_iter());
-    }
-
-    Ok(())
-} */
