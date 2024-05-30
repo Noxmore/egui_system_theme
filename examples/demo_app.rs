@@ -18,7 +18,7 @@ fn main() {
                     // Done because egui_demo_app isn't in crates.io, so i have to get it from github, so these two styles are technically different
                     // You shouldn't have to transmute in your app
                     // Also you probably shouldn't unwrap here, an unwrap_or_default or printing an error message would be better, this is just for testing
-                    std::mem::transmute(egui_native_theme::system_theme().unwrap())
+                    std::mem::transmute(egui_system_theme::system_theme().unwrap())
                 }
             });
             Box::new(egui_demo_app::WrapApp::new(cc))
