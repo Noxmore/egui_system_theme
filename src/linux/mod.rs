@@ -84,20 +84,27 @@ pub fn style_kde(style: &mut Style) -> Result<(), Box<dyn Error>> {
 
     // Some arbitrary changes i've hardcoded, since these things couldn't be gotten from kdeglobals
     // In my opinion it makes things look a little nicer when using breeze and the other color themes i have
-    style.visuals.window_shadow = Shadow {
+    let shadow = Shadow {
         offset: vec2(0., 10.),
         blur: 30.,
         spread: 10.,
         color: Color32::from_rgba_premultiplied(0, 0, 0, 50),
     };
+    style.visuals.popup_shadow = shadow;
+    style.visuals.window_shadow = shadow;
 
     style.visuals.widgets.active.expansion = 0.;
     style.visuals.widgets.hovered.expansion = 0.;
     style.visuals.widgets.noninteractive.expansion = 0.;
     style.visuals.widgets.open.expansion = 0.;
 
+    let rounding = Rounding::same(2.);
+    style.visuals.menu_rounding = rounding;
+    style.visuals.window_rounding = rounding;
+
     style.spacing.window_margin = Margin::same(2.);
     style.spacing.menu_margin = Margin::same(4.);
+    style.spacing.button_padding = vec2(8., 3.);
 
     Ok(())
 }
