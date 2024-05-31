@@ -35,14 +35,12 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
     Ok(style)
 }
 
-/// A shortcut to create a top panel with the id specified that mimics the system titlebar to avoid boilerplate
-pub fn menu_bar<R>(
-    ctx: &Context,
-    id: impl Into<Id>,
-    add_contents: impl FnOnce(&mut Ui) -> R,
-) -> InnerResponse<R> {
+/// A shortcut to create a top panel with the id specified that mimics the system titlebar on most systems. Mainly used for menubars with `menubar_style` enabled.
+#[rustfmt::skip]
+pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bool, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     #[cfg(target_os = "windows")]
     let fill_color = ctx.style().visuals.panel_fill;
+
     #[cfg(not(target_os = "windows"))]
     let fill_color = if ctx.input(|i| i.focused) {
         ctx.style().visuals.widgets.noninteractive.weak_bg_fill
@@ -71,27 +69,22 @@ pub fn menu_bar<R>(
                 ctx.send_viewport_cmd(ViewportCommand::StartDrag);
             }
 
-            menu::bar(ui, |ui| {
+            if menubar_style {
                 let style = ui.style_mut();
-                #[cfg(target_os = "linux")]
-                {
-                    style.spacing.button_padding = vec2(10.0, 6.0);
-                }
-                #[cfg(not(target_os = "linux"))]
-                {
-                    style.spacing.button_padding = vec2(7.0, 4.0);
-                }
-                // For some themes, the button background is the same as the header background
-                style.visuals.widgets.hovered.weak_bg_fill = style
-                    .visuals
-                    .widgets
-                    .hovered
-                    .weak_bg_fill
-                    .mutate(Rgba::from_gray(0.5), 0.05);
 
-                add_contents(ui)
-            })
-            .inner
+                style.visuals.widgets.active.bg_stroke = Stroke::NONE;
+                style.visuals.widgets.hovered.bg_stroke = Stroke::NONE;
+                style.visuals.widgets.inactive.weak_bg_fill = Color32::TRANSPARENT;
+                style.visuals.widgets.inactive.bg_stroke = Stroke::NONE;
+
+                #[cfg(target_os = "linux")] { style.spacing.button_padding = vec2(10.0, 6.0); }
+                #[cfg(not(target_os = "linux"))] { style.spacing.button_padding = vec2(7.0, 4.0); }
+
+                // For some themes, the button background is the same as the header background
+                style.visuals.widgets.hovered.weak_bg_fill = style.visuals.widgets.hovered.weak_bg_fill.mutate(Rgba::from_gray(0.5), 0.05);
+            }
+
+            add_contents(ui)
         })
 }
 

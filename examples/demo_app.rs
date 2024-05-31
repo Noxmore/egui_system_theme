@@ -28,15 +28,15 @@ impl SystemThemeDemoApp {
 
         // Here i'm unwrapping system_theme() for testing purposes,
         // but you should probably print out or handle the error gracefully in your app.
-        cc.egui_ctx
-            .set_style(egui_system_theme::system_theme().unwrap());
+        cc.egui_ctx.set_style(egui_system_theme::system_theme().unwrap());
+
         Self::default()
     }
 }
 
 impl App for SystemThemeDemoApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        egui_system_theme::menu_bar(ctx, "menu_bar_real", |ui| {
+        egui_system_theme::titlebar_extension(ctx, "menu_bar_real", true, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("New").clicked()
                     || ui.button("Open").clicked()
