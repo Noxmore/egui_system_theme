@@ -1,10 +1,7 @@
 use crate::*;
+use ::windows;
 use epaint::Shadow;
-use ::windows as windows;
 use windows::Win32::Graphics::Gdi::*;
-// use windows::Win32::Graphics::Dwm::*;
-// use windows::Win32::System::WinRT::*;
-// use windows::UI::ViewManagement::*;
 
 /// Gets a UI color from the windows API using [GetSysColor](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsyscolor)
 pub(crate) fn get_color(index: SYS_COLOR_INDEX) -> Color32 {
@@ -18,18 +15,9 @@ pub(crate) fn get_color(index: SYS_COLOR_INDEX) -> Color32 {
 /// https://learn.microsoft.com/en-us/windows/win32/gdi/colorref
 pub(crate) fn unpack_0bgr(packed: u32) -> Color32 {
     Color32::from_rgb(
-        ((packed      ) & 0xff) as u8,
-        ((packed >>  8) & 0xff) as u8,
+        ((packed) & 0xff) as u8,
+        ((packed >> 8) & 0xff) as u8,
         ((packed >> 16) & 0xff) as u8,
-    )
-}
-
-pub(crate) fn unpack_argb(packed: u32) -> Color32 {
-    Color32::from_rgba_unmultiplied(
-        ((packed >> 16) & 0xff) as u8,
-        ((packed >>  8) & 0xff) as u8,
-        ((packed      ) & 0xff) as u8,
-        ((packed >> 24) & 0xff) as u8,
     )
 }
 
@@ -43,14 +31,7 @@ pub fn is_windows_eleven() -> bool {
             .unwrap_or(0)
 }
 
-
-// fn convert_windows_color(color: windows::UI::Color) -> Color32 {
-//     Color32::from_rgba_unmultiplied(color.R, color.G, color.B, color.A)
-// }
-
 pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
-    // unsafe { RoInitialize(RO_INIT_SINGLETHREADED)?; }
-
     // See https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsyscolor#windows-1011-system-colors for color reference
     let window_background = get_color(COLOR_WINDOW);
     let window_text = get_color(COLOR_WINDOWTEXT);
@@ -64,12 +45,12 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
 
     // Modern windows is more flatly colored, this should help with that
     let window_divider = Stroke::new(1., window_background.mutate(Rgba::BLACK, 0.2));
-    
+
     style.visuals.widgets.noninteractive.bg_fill = window_divider.color; // Not sure what this is used for
     style.visuals.widgets.noninteractive.weak_bg_fill = inactive; // Used for text input hints and selected windows
     style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1., window_text);
     style.visuals.widgets.noninteractive.bg_stroke = window_divider;
-    
+
     style.visuals.widgets.inactive.bg_fill = window_divider.color;
     style.visuals.widgets.inactive.weak_bg_fill = widget_background;
     style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., widget_text);
@@ -115,28 +96,9 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
         style.visuals.window_rounding = Rounding::ZERO;
         style.visuals.menu_rounding = Rounding::ZERO;
     }
-    
 
-    // let settings = UISettings::new()?;
-
-    // if settings.AnimationsEnabled() == Ok(false) {
-    //     style.animation_time = 0.;
-    // }
-    // style.interaction.tooltip_delay = settings.MouseHoverTime()? as f32 / 1000.; // Guessing MouseHoverTime outputs milliseconds
-
-    // macro_rules! get_color {($ty:ident) => {
-    //     settings.UIElementColor(UIElementType::$ty).map(convert_windows_color)?
-    // };}
-
-    
-
-
-    // style.visuals.panel_fill = get_color!(Window);
-    // style.visuals.window_fill = get_color!(Background);
-    
     // TODO linux popup shadow and menu rounding and button padding
 
-    // TODO
     let shadow = Shadow {
         offset: vec2(0., 10.),
         blur: 30.,
@@ -155,9 +117,6 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     // Modern windows is generally more spaced out then egui's defaults
     style.spacing.button_padding = vec2(10., 3.);
     style.spacing.item_spacing = vec2(10., 6.);
-    // style.spacing.
 
-    // TODO Darker group and tabbed group
-    
     Ok(())
 }

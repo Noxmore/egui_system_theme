@@ -113,24 +113,41 @@ pub fn style_kde(style: &mut Style) -> Result<(), Box<dyn Error>> {
 pub fn style_gtk(style: &mut Style, version: u8) -> Result<(), Box<dyn Error>> {
     // TODO fonts
     let mut gtk_settings = Ini::new();
-    gtk_settings.load(Path::new(&env::var("HOME")?).join(format!(".config/gtk-{version}.0/settings.ini")))?;
-    let theme_name = gtk_settings.get("Settings", "gtk-theme-name").ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "Could not get gtk-theme-name in gtk4 settings.ini"))?;
+    gtk_settings.load(
+        Path::new(&env::var("HOME")?).join(format!(".config/gtk-{version}.0/settings.ini")),
+    )?;
+    let theme_name = gtk_settings
+        .get("Settings", "gtk-theme-name")
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Could not get gtk-theme-name in gtk4 settings.ini",
+            )
+        })?;
     let dark_mode = *DARK_LIGHT_MODE != dark_light::Mode::Light;
     let css_file_name = if dark_mode { "gtk-dark.css" } else { "gtk.css" };
     let path = [
         // All paths the css file we're looking for could be, chooses the first one that exists
-        Path::new(&env::var("HOME")?).join(format!(".themes/{theme_name}/gtk-{version}.0/{css_file_name}")),
+        Path::new(&env::var("HOME")?).join(format!(
+            ".themes/{theme_name}/gtk-{version}.0/{css_file_name}"
+        )),
         Path::new(&env::var("HOME")?).join(format!(".themes/{theme_name}/gtk-{version}.0/gtk.css")), // Fallback if we are in dark mode and gtk-dark.css does not exist
         format!("/usr/share/themes/{theme_name}/gtk-{version}.0/{css_file_name}").into(),
         format!("/usr/share/themes/{theme_name}/gtk-{version}.0/gtk.css").into(),
-    ].into_iter().find(|path| path.exists()).ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("Could not find gtk.css or gtk-dark.css file for theme {theme_name}")))?;
-    
+    ]
+    .into_iter()
+    .find(|path| path.exists())
+    .ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Could not find gtk.css or gtk-dark.css file for theme {theme_name}"),
+        )
+    })?;
 
     gtk::style_gtk_css(style, &path, &mut gtk::GtkCssParseContext::default())?;
 
     Ok(())
 }
-
 
 pub trait IniExt {
     fn get_color(&self, section: &str, key: &str) -> Result<Color32, std::io::Error>;

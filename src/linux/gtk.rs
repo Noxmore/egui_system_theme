@@ -4,12 +4,50 @@
 use std::{collections::HashMap, error::Error, fs, path::Path};
 
 use epaint::Shadow;
-use lightningcss::{printer::PrinterOptions, properties::{border::BorderSideWidth, custom::{Function, Token, TokenOrValue, UnparsedProperty}, Property, PropertyId}, rules::{style::StyleRule, CssRule}, stylesheet::{MinifyOptions, ParserOptions, StyleSheet}, targets::{Features, Targets}, traits::ToCss, values::{color::{CssColor, FloatColor, LABColor, PredefinedColor, RGBA, SRGB}, length::{Length, LengthValue}, percentage::DimensionPercentage}};
+use lightningcss::{
+    printer::PrinterOptions,
+    properties::{
+        border::BorderSideWidth,
+        custom::{Function, Token, TokenOrValue, UnparsedProperty},
+        Property, PropertyId,
+    },
+    rules::{style::StyleRule, CssRule},
+    stylesheet::{MinifyOptions, ParserOptions, StyleSheet},
+    targets::{Features, Targets},
+    traits::ToCss,
+    values::{
+        color::{CssColor, FloatColor, LABColor, PredefinedColor, RGBA, SRGB},
+        length::{Length, LengthValue},
+        percentage::DimensionPercentage,
+    },
+};
 use palette::{IntoColor, WithAlpha};
 
 use crate::*;
 
 // NOTE: I'm nowhere near an expert on creating interpreters, so don't expect anything pretty!
+
+pub static COLOR_WORD_MAP: &[(&str, Color32)] = &[
+    ("blank", Color32::TRANSPARENT),
+    ("black", Color32::BLACK),
+    ("dark_gray", Color32::DARK_GRAY),
+    ("gray", Color32::GRAY),
+    ("light_gray", Color32::LIGHT_GRAY),
+    ("white", Color32::WHITE),
+    ("brown", Color32::BROWN),
+    ("dark_red", Color32::DARK_RED),
+    ("red", Color32::RED),
+    ("light_red", Color32::LIGHT_RED),
+    ("yellow", Color32::YELLOW),
+    ("light_yellow", Color32::LIGHT_YELLOW),
+    ("dark_green", Color32::DARK_GREEN),
+    ("green", Color32::GREEN),
+    ("light_green", Color32::LIGHT_GREEN),
+    ("dark_blue", Color32::DARK_BLUE),
+    ("blue", Color32::BLUE),
+    ("light_blue", Color32::LIGHT_BLUE),
+    ("gold", Color32::GOLD),
+];
 
 macro_rules! css_values {
     {$($name:ident($ty:ty) $as_fn:ident),* $(,)?} => {
@@ -59,21 +97,34 @@ pub trait TokenOrValueIterExt {
 }
 impl<'a, I: Iterator<Item = &'a TokenOrValue<'a>>> TokenOrValueIterExt for I {
     fn expect_token(&mut self, token: Token) -> Option<()> {
-        let TokenOrValue::Token(next_token) = self.next()? else { return None };
+        let TokenOrValue::Token(next_token) = self.next()? else {
+            return None;
+        };
         (next_token == &token).then_some(())
     }
 
     fn eval(&mut self, ctx: &GtkCssParseContext) -> Option<CssValue> {
         match self.next()? {
-            TokenOrValue::Token(Token::AtKeyword(ident)) => ctx.defined_colors.get(ident.as_ref()).copied().map(CssValue::from),
-            TokenOrValue::Token(Token::Ident(ident)) => COLOR_WORD_MAP.iter()
+            TokenOrValue::Token(Token::AtKeyword(ident)) => ctx
+                .defined_colors
+                .get(ident.as_ref())
+                .copied()
+                .map(CssValue::from),
+            TokenOrValue::Token(Token::Ident(ident)) => COLOR_WORD_MAP
+                .iter()
                 .find(|(name, _)| ident.as_ref() == *name)
                 .map(|(_, color)| CssValue::Color(*color)),
-            TokenOrValue::Token(Token::Number { has_sign: _, value, .. }) => Some(CssValue::Number(*value)),
-            TokenOrValue::Token(Token::Percentage { has_sign: _, unit_value, .. }) => Some(CssValue::Number(*unit_value)),
+            TokenOrValue::Token(Token::Number {
+                has_sign: _, value, ..
+            }) => Some(CssValue::Number(*value)),
+            TokenOrValue::Token(Token::Percentage {
+                has_sign: _,
+                unit_value,
+                ..
+            }) => Some(CssValue::Number(*unit_value)),
             TokenOrValue::Function(function) => ctx.eval_function(function),
-            
-            _ => None
+
+            _ => None,
         }
     }
 }
@@ -84,7 +135,10 @@ pub struct GtkCssParseContext {
 }
 impl GtkCssParseContext {
     fn eval_function(&self, function: &Function) -> Option<CssValue> {
-        let mut args = function.arguments.0.iter()
+        let mut args = function
+            .arguments
+            .0
+            .iter()
             .filter(|token| !matches!(token, TokenOrValue::Token(Token::WhiteSpace(_))));
 
         match function.name.as_ref() {
@@ -105,7 +159,7 @@ impl GtkCssParseContext {
             // We need to turn a gradient into a single color, to do this we just choose the color closest to half way
             "linear-gradient" => {
                 let mut values = Vec::new();
-                
+
                 args.next()?;
                 while args.expect_token(Token::Comma).is_some() {
                     values.push(args.eval(self).as_color()?);
@@ -120,21 +174,27 @@ impl GtkCssParseContext {
                 let color = args.eval(self).as_color()?;
                 let alpha = (args.eval(self).as_number()? * 255.) as u8;
 
-                Some(CssValue::Color(Color32::from_rgba_premultiplied(color.r(), color.g(), color.b(), alpha)))
+                Some(CssValue::Color(Color32::from_rgba_premultiplied(
+                    color.r(),
+                    color.g(),
+                    color.b(),
+                    alpha,
+                )))
             }
 
-            _ => None
+            _ => None,
         }
     }
-    
+
     pub fn extract_background_color(&self, property: &Property) -> Option<Color32> {
         match property {
             Property::BackgroundColor(color) => Some(convert_css_color(color)),
-            Property::Unparsed(UnparsedProperty { property_id: PropertyId::BackgroundColor | PropertyId::Background, value }) => {
-                value.0.iter().eval(self).as_color()
-            },
+            Property::Unparsed(UnparsedProperty {
+                property_id: PropertyId::BackgroundColor | PropertyId::Background,
+                value,
+            }) => value.0.iter().eval(self).as_color(),
             Property::Background(background) => Some(convert_css_color(&background.first()?.color)),
-            
+
             _ => None,
         }
     }
@@ -142,10 +202,11 @@ impl GtkCssParseContext {
     pub fn extract_foreground_color(&self, property: &Property) -> Option<Color32> {
         match property {
             Property::Color(color) => Some(convert_css_color(color)),
-            Property::Unparsed(UnparsedProperty { property_id: PropertyId::Color, value }) => {
-                value.0.iter().eval(self).as_color()
-            },
-            
+            Property::Unparsed(UnparsedProperty {
+                property_id: PropertyId::Color,
+                value,
+            }) => value.0.iter().eval(self).as_color(),
+
             _ => None,
         }
     }
@@ -154,7 +215,10 @@ impl GtkCssParseContext {
         match property {
             Property::Border(border) => Some(convert_css_color(&border.color)),
             Property::BorderColor(color) => Some(convert_css_color(&color.top)),
-            Property::Unparsed(UnparsedProperty { property_id: PropertyId::BorderColor | PropertyId::Border, value }) => {
+            Property::Unparsed(UnparsedProperty {
+                property_id: PropertyId::BorderColor | PropertyId::Border,
+                value,
+            }) => {
                 // Just parse until we run out of tokens or we hit a valid color
                 let mut tokens = value.0.iter();
                 for _ in 0..value.0.len() {
@@ -163,8 +227,8 @@ impl GtkCssParseContext {
                     }
                 }
                 None
-            },
-            
+            }
+
             _ => None,
         }
     }
@@ -172,10 +236,11 @@ impl GtkCssParseContext {
         match property {
             Property::Border(border) => Some(convert_border_side_width(&border.width)),
             Property::BorderWidth(width) => Some(convert_border_side_width(&width.top)),
-            Property::Unparsed(UnparsedProperty { property_id: PropertyId::BorderColor | PropertyId::Border, value }) => {
-                value.0.iter().eval(self).as_number()
-            },
-            
+            Property::Unparsed(UnparsedProperty {
+                property_id: PropertyId::BorderColor | PropertyId::Border,
+                value,
+            }) => value.0.iter().eval(self).as_number(),
+
             _ => None,
         }
     }
@@ -187,11 +252,15 @@ impl GtkCssParseContext {
                 sw: convert_dimension_percentage(&radius.bottom_left.0),
                 se: convert_dimension_percentage(&radius.bottom_right.0),
             }),
-            
+
             _ => None,
         }
     }
-    pub fn extract_border_into<const NUM: usize>(&self, property: &Property, dst: [(&mut Stroke, &mut Rounding); NUM]) {
+    pub fn extract_border_into<const NUM: usize>(
+        &self,
+        property: &Property,
+        dst: [(&mut Stroke, &mut Rounding); NUM],
+    ) {
         if let Some(border_color) = self.extract_border_color(property) {
             for (stroke, _) in dst {
                 stroke.color = border_color;
@@ -216,14 +285,17 @@ impl GtkCssParseContext {
                 }
 
                 Some(Shadow {
-                    offset: vec2(convert_length(&shadow.x_offset), convert_length(&shadow.y_offset)),
+                    offset: vec2(
+                        convert_length(&shadow.x_offset),
+                        convert_length(&shadow.y_offset),
+                    ),
                     blur: convert_length(&shadow.blur),
                     spread: convert_length(&shadow.spread),
                     color: convert_css_color(&shadow.color),
                 })
             }
-            
-            _ => None
+
+            _ => None,
         }
     }
 }
@@ -282,7 +354,11 @@ pub fn style_gtk_css(style: &mut Style, path: &Path, ctx: &mut GtkCssParseContex
     Ok(())
 }
 
-fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule) -> Result<(), Box<dyn Error>> {
+fn style_gtk_rule(
+    style: &mut Style,
+    ctx: &GtkCssParseContext,
+    rule: &StyleRule,
+) -> Result<(), Box<dyn Error>> {
     for selectors in &rule.selectors.0 {
         /* for selector in selectors.iter() {
             /* if let Component::ID(id) = selector {
@@ -301,6 +377,7 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
         if selector == ".background" {
             for (property, _important) in rule.declarations.iter() {
                 if let Some(bg_color) = ctx.extract_background_color(property) {
+                    style.visuals.widgets.noninteractive.bg_fill = bg_color;
                     style.visuals.panel_fill = bg_color;
                     style.visuals.window_fill = bg_color;
                 }
@@ -313,6 +390,7 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(bg_color) = ctx.extract_background_color(property) {
                     style.visuals.widgets.open.weak_bg_fill = bg_color;
                     style.visuals.widgets.open.bg_fill = bg_color;
+                    style.visuals.widgets.noninteractive.weak_bg_fill = bg_color;
                     style.visuals.faint_bg_color = bg_color;
                 }
                 if let Some(fg_color) = ctx.extract_foreground_color(property) {
@@ -334,11 +412,23 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                     style.visuals.widgets.hovered.fg_stroke = Stroke::new(1., fg_color);
                     style.visuals.widgets.active.fg_stroke = Stroke::new(1., fg_color);
                 }
-                ctx.extract_border_into(property, [
-                    (&mut style.visuals.widgets.inactive.bg_stroke, &mut style.visuals.widgets.inactive.rounding),
-                    (&mut style.visuals.widgets.hovered.bg_stroke, &mut style.visuals.widgets.hovered.rounding),
-                    (&mut style.visuals.widgets.active.bg_stroke, &mut style.visuals.widgets.active.rounding),
-                ]);
+                ctx.extract_border_into(
+                    property,
+                    [
+                        (
+                            &mut style.visuals.widgets.inactive.bg_stroke,
+                            &mut style.visuals.widgets.inactive.rounding,
+                        ),
+                        (
+                            &mut style.visuals.widgets.hovered.bg_stroke,
+                            &mut style.visuals.widgets.hovered.rounding,
+                        ),
+                        (
+                            &mut style.visuals.widgets.active.bg_stroke,
+                            &mut style.visuals.widgets.active.rounding,
+                        ),
+                    ],
+                );
             }
         } else if selector == "button:hover" {
             // I'm assuming that button comes before button:hover here
@@ -350,7 +440,13 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(fg_color) = ctx.extract_foreground_color(property) {
                     style.visuals.widgets.hovered.fg_stroke = Stroke::new(1., fg_color);
                 }
-                ctx.extract_border_into(property, [(&mut style.visuals.widgets.hovered.bg_stroke, &mut style.visuals.widgets.hovered.rounding)]);
+                ctx.extract_border_into(
+                    property,
+                    [(
+                        &mut style.visuals.widgets.hovered.bg_stroke,
+                        &mut style.visuals.widgets.hovered.rounding,
+                    )],
+                );
             }
         } else if selector == "button:active" {
             for (property, _important) in rule.declarations.iter() {
@@ -361,12 +457,26 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(fg_color) = ctx.extract_foreground_color(property) {
                     style.visuals.widgets.active.fg_stroke = Stroke::new(1., fg_color);
                 }
-                ctx.extract_border_into(property, [
-                    (&mut style.visuals.widgets.active.bg_stroke, &mut style.visuals.widgets.active.rounding),
-                    (&mut style.visuals.widgets.open.bg_stroke, &mut style.visuals.widgets.open.rounding),
-                ]);
+                ctx.extract_border_into(
+                    property,
+                    [
+                        (
+                            &mut style.visuals.widgets.active.bg_stroke,
+                            &mut style.visuals.widgets.active.rounding,
+                        ),
+                        (
+                            &mut style.visuals.widgets.open.bg_stroke,
+                            &mut style.visuals.widgets.open.rounding,
+                        ),
+                    ],
+                );
             }
-        } else if selector == "selection" || selector == "label selection" || selector == "entry selection" || selector == "entry > text > selection" || selector == "label > selection" {
+        } else if selector == "selection"
+            || selector == "label selection"
+            || selector == "entry selection"
+            || selector == "entry > text > selection"
+            || selector == "label > selection"
+        {
             for (property, _important) in rule.declarations.iter() {
                 if let Some(bg_color) = ctx.extract_background_color(property) {
                     style.visuals.selection.bg_fill = bg_color;
@@ -388,11 +498,23 @@ fn style_gtk_rule(style: &mut Style, ctx: &GtkCssParseContext, rule: &StyleRule)
                 if let Some(shadow) = ctx.extract_shadow(property) {
                     style.visuals.window_shadow = shadow;
                 }
-                ctx.extract_border_into(property, [(&mut style.visuals.window_stroke, &mut style.visuals.window_rounding)]);
+                ctx.extract_border_into(
+                    property,
+                    [(
+                        &mut style.visuals.window_stroke,
+                        &mut style.visuals.window_rounding,
+                    )],
+                );
             }
         } else if selector == ".frame" {
             for (property, _important) in rule.declarations.iter() {
-                ctx.extract_border_into(property, [(&mut style.visuals.widgets.noninteractive.bg_stroke, &mut style.visuals.widgets.noninteractive.rounding)]);
+                ctx.extract_border_into(
+                    property,
+                    [(
+                        &mut style.visuals.widgets.noninteractive.bg_stroke,
+                        &mut style.visuals.widgets.noninteractive.rounding,
+                    )],
+                );
             }
         }
     }
@@ -406,13 +528,28 @@ pub fn convert_rgba(rgba: RGBA) -> Color32 {
     Color32::from_rgba_unmultiplied(rgba.red, rgba.green, rgba.blue, rgba.alpha)
 }
 pub fn convert_srgb(srgb: SRGB) -> Color32 {
-    Color32::from_rgba_unmultiplied((srgb.r * 255.) as u8, (srgb.g * 255.) as u8, (srgb.b * 255.) as u8, (srgb.alpha * 255.) as u8)
+    Color32::from_rgba_unmultiplied(
+        (srgb.r * 255.) as u8,
+        (srgb.g * 255.) as u8,
+        (srgb.b * 255.) as u8,
+        (srgb.alpha * 255.) as u8,
+    )
 }
 pub fn convert_to_srgb(color: Color32) -> SRGB {
-    SRGB { r: color.r() as f32 / 255., g: color.g() as f32 / 255., b: color.b() as f32 / 255., alpha: color.a() as f32 / 255. }
+    SRGB {
+        r: color.r() as f32 / 255.,
+        g: color.g() as f32 / 255.,
+        b: color.b() as f32 / 255.,
+        alpha: color.a() as f32 / 255.,
+    }
 }
 fn palette_convert(color: palette::Alpha<palette::Srgb, f32>) -> Color32 {
-    convert_srgb(SRGB { r: color.red, g: color.green, b: color.blue, alpha: color.alpha })
+    convert_srgb(SRGB {
+        r: color.red,
+        g: color.green,
+        b: color.blue,
+        alpha: color.alpha,
+    })
 }
 pub fn convert_border_side_width(width: &BorderSideWidth) -> f32 {
     match width {

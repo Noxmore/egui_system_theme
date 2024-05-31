@@ -13,4 +13,5 @@ Uses [GetSysColor](https://learn.microsoft.com/en-us/windows/win32/api/winuser/n
 NOTE: Some modern versions of Windows don't update this with the user's dark mode/accent color preferences for some reason, so if you are targeting windows, you should probably have an option to use the default `egui` theme.
 
 ### MacOS
-Not supported yet.
+Not supported yet, as i don't have access to any systems running it.
+If you do, and want to help, a pull request would be greatly appreciated!
