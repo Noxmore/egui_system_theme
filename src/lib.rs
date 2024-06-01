@@ -38,20 +38,10 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
 /// A shortcut to create a top panel with the id specified that mimics the system titlebar on most systems. Mainly used for menubars with `menubar_style` enabled.
 #[rustfmt::skip]
 pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bool, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-    #[cfg(target_os = "windows")]
-    let fill_color = ctx.style().visuals.panel_fill;
-
-    #[cfg(not(target_os = "windows"))]
-    let fill_color = if ctx.input(|i| i.focused) {
-        ctx.style().visuals.widgets.noninteractive.weak_bg_fill
-    } else {
-        ctx.style().visuals.panel_fill
-    };
-
     TopBottomPanel::top(id)
         .frame(
             Frame::side_top_panel(&ctx.style())
-                .fill(fill_color)
+                .fill(ctx.style().visuals.titlebar(ctx.input(|i| i.focused)))
                 .inner_margin(Margin::same(0.)),
         )
         .show(ctx, |ui| {
@@ -88,29 +78,25 @@ pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bo
         })
 }
 
-/* pub trait VisualsExt {
-    /// The color of the window titlebar when using system theme.
-    ///
-    /// If the current platform is windows, `focused` will not be used, as a system call will be used instead of a visuals color.
+pub trait VisualsExt {
+    /// The color of the window titlebar when using system theme to the best of this library's ability. Mainly used for menubars. You can get focused with the egui [Context] `ctx.input(|i| i.focused)`
     fn titlebar(&self, focused: bool) -> Color32;
 }
 impl VisualsExt for Visuals {
     #[allow(unused)]
     fn titlebar(&self, focused: bool) -> Color32 {
-        // #[cfg(target_os = "windows")] {
-        //     let mut packed = 0u32;
-        //     if unsafe { ::windows::Win32::Graphics::Dwm::DwmGetColorizationColor(&mut packed, &mut Default::default()) }.is_ok() {
-        //         return windows::unpack_argb(packed);
-        //     }
-        // }
+        #[cfg(target_os = "windows")] {
+            self.panel_fill
+        }
 
+        #[cfg(not(target_os = "windows"))]
         if focused {
             self.widgets.noninteractive.weak_bg_fill
         } else {
             self.panel_fill
         }
     }
-} */
+}
 
 pub(crate) trait Color32Ext {
     fn mutate(self, towards: Rgba, amount: f32) -> Self;
