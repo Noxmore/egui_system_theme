@@ -42,12 +42,13 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     let highlight = get_color(COLOR_HIGHLIGHT);
     let widget_text = get_color(COLOR_BTNTEXT);
     let widget_background = get_color(COLOR_3DFACE);
+    let widget_background_darker = widget_background.mutate(Rgba::BLACK, 0.1);
 
     // Modern windows is more flatly colored, this should help with that
     let window_divider = Stroke::new(1., window_background.mutate(Rgba::BLACK, 0.2));
 
     style.visuals.widgets.noninteractive.bg_fill = window_divider.color; // Not sure what this is used for
-    style.visuals.widgets.noninteractive.weak_bg_fill = inactive; // Used for text input hints and selected windows
+    style.visuals.widgets.noninteractive.weak_bg_fill = window_background; // Used for text input hints and selected windows
     style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1., window_text);
     style.visuals.widgets.noninteractive.bg_stroke = window_divider;
 
@@ -73,14 +74,14 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     style.visuals.widgets.open.bg_stroke = Stroke::new(1., highlight);
 
     style.visuals.hyperlink_color = highlight;
-    style.visuals.panel_fill = window_background;
-    style.visuals.window_fill = window_background;
+    style.visuals.panel_fill = widget_background_darker;
+    style.visuals.window_fill = widget_background_darker;
     // widget_text is also used for window borders according to the documentation
     style.visuals.window_stroke = Stroke::new(1., widget_text);
 
-    let darker = window_background.mutate(Rgba::BLACK, 0.3);
-    style.visuals.code_bg_color = darker;
-    style.visuals.extreme_bg_color = darker;
+    // let darker = window_background.mutate(Rgba::BLACK, 0.3);
+    style.visuals.code_bg_color = window_background;
+    style.visuals.extreme_bg_color = window_background;
     style.visuals.faint_bg_color = window_background.mutate(Rgba::from_gray(0.5), 0.2);
 
     style.visuals.selection.stroke = Stroke::new(1., highlight_text);

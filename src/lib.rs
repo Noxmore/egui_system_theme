@@ -42,7 +42,7 @@ pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bo
         .frame(
             Frame::side_top_panel(&ctx.style())
                 .fill(ctx.style().visuals.titlebar(ctx.input(|i| i.focused)))
-                .inner_margin(Margin::same(0.)),
+                .inner_margin(Margin::same(0.))
         )
         .show(ctx, |ui| {
             let title_bar_response =
@@ -86,7 +86,7 @@ impl VisualsExt for Visuals {
     #[allow(unused)]
     fn titlebar(&self, focused: bool) -> Color32 {
         #[cfg(target_os = "windows")] {
-            self.panel_fill
+            self.code_bg_color
         }
 
         #[cfg(not(target_os = "windows"))]
