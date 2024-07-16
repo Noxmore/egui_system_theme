@@ -10,7 +10,7 @@ fn main() {
     run_native(
         "egui_system_theme Demo App",
         native_options,
-        Box::new(|cc| Box::new(SystemThemeDemoApp::new(cc))),
+        Box::new(|cc| Ok(Box::new(SystemThemeDemoApp::new(cc)))),
     )
     .unwrap();
 }

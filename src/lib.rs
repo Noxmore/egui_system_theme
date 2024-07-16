@@ -38,6 +38,8 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
 /// A shortcut to create a top panel with the id specified that mimics the system titlebar on most systems. Mainly used for menubars with `menubar_style` enabled.
 #[rustfmt::skip]
 pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bool, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
+    let id = id.into();
+    
     TopBottomPanel::top(id)
         .frame(
             Frame::side_top_panel(&ctx.style())
@@ -46,7 +48,7 @@ pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bo
         )
         .show(ctx, |ui| {
             let title_bar_response =
-                ui.interact(ui.max_rect(), Id::new("menu_bar"), Sense::click_and_drag());
+                ui.interact(ui.max_rect(), id.with("interaction"), Sense::click_and_drag());
 
             if title_bar_response.double_clicked() {
                 let is_maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
@@ -85,7 +87,8 @@ pub trait VisualsExt {
 impl VisualsExt for Visuals {
     #[allow(unused)]
     fn titlebar(&self, focused: bool) -> Color32 {
-        #[cfg(target_os = "windows")] {
+        #[cfg(target_os = "windows")]
+        {
             self.code_bg_color
         }
 
