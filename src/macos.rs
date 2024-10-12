@@ -41,6 +41,51 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+/// Takes the `Color32` consts and converts them to the MacOS specified versions.\
+/// The color will be unchanged if it's not one of the consts.\
+/// https://developer.apple.com/design/human-interface-guidelines/color#Specifications
+pub fn color32_to_macos_color(color: Color32) -> Color32 {
+    if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
+        match color {
+            Color32::BLUE => Color32::from_rgb(10, 132, 255),
+            Color32::BROWN => Color32::from_rgb(172, 142, 104),
+            Color32::GRAY => Color32::from_rgb(152, 152, 157),
+            Color32::GREEN => Color32::from_rgb(50, 215, 75),
+            Color32::ORANGE => Color32::from_rgb(255, 159, 10),
+            Color32::RED => Color32::from_rgb(255, 69, 58),
+            Color32::YELLOW => Color32::from_rgb(255, 214, 10),
+            _ => match_dark_light_colors(color)
+        }
+    } else {
+        match color {
+            Color32::BLUE => Color32::from_rgb(0, 122, 255),
+            Color32::BROWN => Color32::from_rgb(162, 132, 94),
+            Color32::GRAY => Color32::from_rgb(142, 142, 147),
+            Color32::GREEN => Color32::from_rgb(40, 205, 65),
+            Color32::ORANGE => Color32::from_rgb(255, 149, 0),
+            Color32::RED => Color32::from_rgb(255, 59, 48),
+            Color32::YELLOW => Color32::from_rgb(255, 204, 0),
+            _ => match_dark_light_colors(color)
+        }
+    }
+}
+
+/// dark colors are the light mode accessible colors, light colors are the inverse.\
+/// The color will be unchanged if it's not one of the consts.
+const fn match_dark_light_colors(color: Color32) -> Color32 {
+    match color {
+        Color32::DARK_BLUE => Color32::from_rgb(0, 64, 221),
+        Color32::DARK_GRAY => Color32::from_rgb(105, 105, 110),
+        Color32::DARK_GREEN => Color32::from_rgb(0, 125, 27),
+        Color32::DARK_RED => Color32::from_rgb(215, 0, 21),
+        Color32::LIGHT_BLUE => Color32::from_rgb(90, 200, 245), // Cyan
+        Color32::LIGHT_GRAY => Color32::from_rgb(152, 152, 157),
+        Color32::LIGHT_RED => Color32::from_rgb(255, 105, 97),
+        Color32::LIGHT_YELLOW => Color32::from_rgb(255, 212, 38),
+        _ => color
+    }
+}
+
 // the AccentColor code is from [dan-lee/tao](https://github.com/dan-lee/tao/tree/feat/accent_color_macos)
 
 /// The different macos accent colors
