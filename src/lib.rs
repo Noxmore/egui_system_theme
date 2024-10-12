@@ -23,11 +23,13 @@ use linux as platform;
 pub(crate) static DARK_LIGHT_MODE: Lazy<dark_light::Mode> = Lazy::new(dark_light::detect);
 
 pub fn system_theme() -> Result<Style, Box<dyn Error>> {
-    let mut style = Style::default();
-    style.visuals = match *DARK_LIGHT_MODE {
-        dark_light::Mode::Default => Visuals::default(),
-        dark_light::Mode::Dark => Visuals::dark(),
-        dark_light::Mode::Light => Visuals::light(),
+    let mut style = Style {
+        visuals: match *DARK_LIGHT_MODE {
+            dark_light::Mode::Default => Visuals::default(),
+            dark_light::Mode::Dark => Visuals::dark(),
+            dark_light::Mode::Light => Visuals::light(),
+        }, 
+        ..Style::default()
     };
 
     platform::style(&mut style)?;

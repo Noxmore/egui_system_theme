@@ -1,5 +1,3 @@
-#![cfg(target_os = "macos")]
-
 use crate::*;
 use cocoa::{base::{id, nil}, foundation::NSString};
 use objc::{msg_send, class, sel, sel_impl};
@@ -8,7 +6,7 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     // TODO Currently only accent color is supported
 
     // text works better with the accent colors when it's more like the macos text color
-    if dark_light::detect() == dark_light::Mode::Dark {
+    if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
         style.visuals.override_text_color = Some(style.visuals.text_color().mutate(Rgba::WHITE, 0.7));
     }
 
