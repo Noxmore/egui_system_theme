@@ -8,22 +8,35 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     // text works better with the accent colors when it's more like the macos text color
     if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
         style.visuals.override_text_color = Some(style.visuals.text_color().mutate(Rgba::WHITE, 0.7));
+
+        let fill = Color32::from_rgb(42, 42, 42); // background color of dark mode appkit apps
+        style.visuals.panel_fill = fill;
+        style.visuals.window_fill = fill;
+        // widget_text is also used for window borders according to the documentation
+        style.visuals.window_stroke = Stroke::new(1., fill);
+
+        style.visuals.widgets.noninteractive.bg_fill = fill.mutate(Rgba::BLACK, 0.1);
+        style.visuals.widgets.noninteractive.weak_bg_fill = fill; // Used for text input hints and selected windows
+        style.visuals.widgets.inactive.bg_fill = fill;
+        style.visuals.widgets.inactive.weak_bg_fill = fill;
+        style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., Color32::GRAY.mutate(Rgba::WHITE, 0.1));
+        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1., Color32::from_rgb(87, 87, 87));
+        style.visuals.extreme_bg_color = Color32::from_rgb(54, 54, 54);
     }
 
-    // if the accent color is Multicolor then it will not be set
-    let highlight = match get_ns_accent_color() {
-        Some(c) => c.into(),
-        None => return Ok(()),
-    };
+    // if the accent color is Multicolor then it will be set to blue as MacOS does
+    let highlight: Color32 = get_ns_accent_color().unwrap_or(AccentColor::Blue).into();
+    // improve legibliety
+    let highlight_fill = highlight.mutate(Rgba::BLACK, 0.1);
 
     style.visuals.widgets.hovered.bg_stroke = Stroke::new(1., highlight);
     style.visuals.widgets.active.bg_fill = highlight;
-    style.visuals.widgets.active.weak_bg_fill = highlight;
+    style.visuals.widgets.active.weak_bg_fill = highlight_fill;
     style.visuals.widgets.active.bg_stroke = Stroke::new(1., highlight);
-    style.visuals.widgets.open.bg_fill = highlight;
+    style.visuals.widgets.open.bg_fill = highlight_fill;
     style.visuals.widgets.open.bg_stroke = Stroke::new(1., highlight);
-    style.visuals.hyperlink_color = highlight;
-    style.visuals.selection.bg_fill = highlight;
+    style.visuals.hyperlink_color = highlight_fill;
+    style.visuals.selection.bg_fill = highlight_fill;
 
     Ok(())
 }
