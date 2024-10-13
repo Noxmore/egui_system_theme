@@ -35,10 +35,11 @@ mod ffi {
         Window,
         InactiveFg,
         Stripe,
+        ScrollBar,
     }
 
     extern "Swift" {
-        pub fn colors(color: Colors) -> (f64, f64, f64, f64);
+        pub(crate) fn colors(color: Colors) -> (f64, f64, f64, f64);
     }
 }
 
@@ -61,11 +62,11 @@ macro_rules! get_color {
 
 pub(crate) fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     style.visuals.override_text_color = Some(get_color!(Colors::Text));
-    style.visuals.hyperlink_color = get_color!(Colors::Link);
+    style.visuals.hyperlink_color = get_color!(Colors::Link).mutate(get_color!(Colors::Accent).into(), 0.2);
 
     style.visuals.widgets.hovered.expansion = 0.0;
     style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., get_color!(Colors::InactiveFg));
-    style.visuals.extreme_bg_color = get_color!(Colors::TextEdit);
+    style.visuals.extreme_bg_color = get_color!(Colors::TextEdit).mutate(Rgba::WHITE, 0.01);
     style.visuals.faint_bg_color = get_color!(Colors::Stripe).mutate(Rgba::WHITE, 0.05);
     style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., Color32::WHITE.mutate(get_color!(Colors::Accent).into(), 0.1));
 

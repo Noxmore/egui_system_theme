@@ -1,7 +1,5 @@
 #[cfg(not(all(feature = "dynamic-mac-colors", target_os = "macos")))]
-fn main() {
-    return;
-}
+fn main() {}
 
 #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
 fn main() {
@@ -48,7 +46,7 @@ fn main() {
         .arg("./swift_bridge/SwiftBridgeCore.swift");
 
     if std::env::var("PROFILE").unwrap() == "release" {
-        cmd.args(&["-c", "release"]);
+        cmd.args(["-c", "release"]);
     }
 
     // 3. Link to Swift library
@@ -57,14 +55,12 @@ fn main() {
 
     let exit_status = cmd.spawn().unwrap().wait_with_output().unwrap();
 
-    if !exit_status.status.success() {
-        panic!(
-            r#"
-            Stderr: {}
-            Stdout: {}
-            "#,
-            String::from_utf8(exit_status.stderr).unwrap(),
-            String::from_utf8(exit_status.stdout).unwrap(),
-        )
-    }
+    assert!(exit_status.status.success(), 
+        r#"
+        Stderr: {}
+        Stdout: {}
+        "#,
+        String::from_utf8(exit_status.stderr).unwrap(),
+        String::from_utf8(exit_status.stdout).unwrap(),
+    );
 }

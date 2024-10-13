@@ -1,26 +1,41 @@
 use crate::*;
+#[cfg(not(feature = "dynamic-mac-colors"))]
 use cocoa::{base::{id, nil}, foundation::NSString,};
+#[cfg(not(feature = "dynamic-mac-colors"))]
 use objc::{class, msg_send, sel, sel_impl};
-// #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
+#[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
 mod dynamic;
 
 pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
-    // todo make buttons and others bigger
+    style.url_in_tooltip = false;
+    style.interaction.selectable_labels = true;
+    style.interaction.interact_radius = 5.2;
+    style.spacing.button_padding = vec2(4.5, 1.3);
+
+    // scroll bar
+    style.spacing.scroll.bar_width = 6.0;
+    style.spacing.scroll.floating_width = 3.0;
+    style.spacing.scroll.interact_background_opacity = 0.1;
+    style.spacing.scroll.dormant_background_opacity = 0.1;
+    style.spacing.scroll.active_background_opacity = 0.1;
+    style.spacing.scroll.foreground_color = true;
 
     // use dynamic color if available
     #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
     {
-        set_accent(style);
-        return dynamic::style(style);
+        dynamic::style(style)
     }
 
     #[cfg(not(feature = "dynamic-mac-colors"))]
     {
-        static_style(style)
+        static_style(style);
+        Ok(())
     }
 }
 
-pub fn static_style(style: &mut Style) -> Result<(), Box<dyn Error>> {
+#[cfg(not(feature = "dynamic-mac-colors"))]
+/// Simple style with the system accent color and hardcoded values from the OS
+pub(crate) fn static_style(style: &mut Style) {
     style.visuals.widgets.hovered.expansion = 0.0;
 
     // text works better with the accent colors when it's more like the macos text color
@@ -31,22 +46,22 @@ pub fn static_style(style: &mut Style) -> Result<(), Box<dyn Error>> {
         style.visuals.panel_fill = fill;
         style.visuals.window_fill = fill;
         // widget_text is also used for window borders according to the documentation
-        style.visuals.window_stroke = Stroke::new(1., fill);
+        style.visuals.window_stroke = Stroke::new(1., fill.mutate(Rgba::WHITE, 0.05));
 
         style.visuals.widgets.noninteractive.bg_fill = fill.mutate(Rgba::BLACK, 0.1);
         style.visuals.widgets.noninteractive.weak_bg_fill = fill; // Used for text input hints and selected windows
         style.visuals.widgets.inactive.bg_fill = fill;
         style.visuals.widgets.inactive.weak_bg_fill = fill;
-        style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., Color32::GRAY.mutate(Rgba::WHITE, 0.1));
+        style.visuals.widgets.inactive.fg_stroke = Stroke::new(1., Color32::GRAY.mutate(Rgba::WHITE, 0.15));
         style.visuals.widgets.inactive.bg_stroke = Stroke::new(1., Color32::from_rgb(87, 87, 87));
-        style.visuals.extreme_bg_color = Color32::from_rgb(54, 54, 54);
+        style.visuals.extreme_bg_color = Color32::from_rgb(54, 54, 54).mutate(Rgba::BLACK, 0.02);
+        style.visuals.faint_bg_color = fill.mutate(Rgba::WHITE, 0.02);
     }
 
     set_accent(style);
-
-    Ok(())
 }
 
+#[cfg(not(feature = "dynamic-mac-colors"))]
 fn set_accent(style: &mut Style) {
     // if the accent color is Multicolor then it will be set to blue as MacOS does
     let highlight: Color32 = get_ns_accent_color().unwrap_or(AccentColor::Blue).into();
@@ -63,9 +78,10 @@ fn set_accent(style: &mut Style) {
     style.visuals.selection.bg_fill = highlight_fill;
 }
 
-/// Takes the `Color32` consts and converts them to the MacOS specified versions.\
+/// Takes the `Color32` consts and converts them to the `MacOS` specified versions.\
 /// The color will be unchanged if it's not one of the consts.\
-/// https://developer.apple.com/design/human-interface-guidelines/color#Specifications
+/// <https://developer.apple.com/design/human-interface-guidelines/color#Specifications>
+#[must_use = "use the system color"]
 pub fn get_macos_color(color: Color32) -> Color32 {
     #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
     return dynamic::color32_to_macos_color(color);
@@ -74,6 +90,7 @@ pub fn get_macos_color(color: Color32) -> Color32 {
     static_macos_color(color)
 }
 
+#[cfg(not(feature = "dynamic-mac-colors"))]
 fn static_macos_color(color: Color32) -> Color32 {
     if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
         match color {
@@ -149,6 +166,7 @@ impl From<AccentColor> for Color32 {
     }
 }
 
+#[cfg(not(feature = "dynamic-mac-colors"))]
 /// Get the system accent color using ojbc
 fn get_ns_accent_color() -> Option<AccentColor> {
     let color_int: id;

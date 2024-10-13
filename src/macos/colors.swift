@@ -59,6 +59,8 @@ func colors(color: Colors) -> (Double, Double, Double, Double) {
         NSColor.knobColor.cgColor.components!
     case Colors.Stripe:
         NSColor.alternatingContentBackgroundColors[0].cgColor.components!
+    case Colors.ScrollBar:
+        NSColor.scrollBarColor.cgColor.components!
     }
     
     return (color[0], color[1], color[2], color[3])
