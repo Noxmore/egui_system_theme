@@ -2,3 +2,5 @@
 /.vscode
 /.idea
 Cargo.lock
+swift_bridge
+libswift_colors.a

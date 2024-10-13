@@ -1,9 +1,27 @@
 use crate::*;
 use cocoa::{base::{id, nil}, foundation::NSString};
 use objc::{msg_send, class, sel, sel_impl};
+#[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
+mod dynamic;
 
 pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
-    // TODO Currently only accent color is supported
+    // todo make buttons and others bigger
+
+    // use dynamic color if available
+    #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
+    {
+        set_accent(style);
+        return dynamic::style(style);
+    }
+
+    #[cfg(not(feature = "dynamic-mac-colors"))]
+    {
+        static_style(style)
+    }
+}
+
+pub fn static_style(style: &mut Style) -> Result<(), Box<dyn Error>> {
+    style.visuals.widgets.hovered.expansion = 0.0;
 
     // text works better with the accent colors when it's more like the macos text color
     if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
@@ -24,6 +42,12 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
         style.visuals.extreme_bg_color = Color32::from_rgb(54, 54, 54);
     }
 
+    set_accent(style);
+
+    Ok(())
+}
+
+fn set_accent(style: &mut Style) {
     // if the accent color is Multicolor then it will be set to blue as MacOS does
     let highlight: Color32 = get_ns_accent_color().unwrap_or(AccentColor::Blue).into();
     // improve legibliety
@@ -37,8 +61,6 @@ pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     style.visuals.widgets.open.bg_stroke = Stroke::new(1., highlight);
     style.visuals.hyperlink_color = highlight_fill;
     style.visuals.selection.bg_fill = highlight_fill;
-
-    Ok(())
 }
 
 /// Takes the `Color32` consts and converts them to the MacOS specified versions.\
