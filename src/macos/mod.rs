@@ -1,7 +1,7 @@
 use crate::*;
-use cocoa::{base::{id, nil}, foundation::NSString};
-use objc::{msg_send, class, sel, sel_impl};
-#[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
+use cocoa::{base::{id, nil}, foundation::NSString,};
+use objc::{class, msg_send, sel, sel_impl};
+// #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
 mod dynamic;
 
 pub fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
@@ -66,7 +66,15 @@ fn set_accent(style: &mut Style) {
 /// Takes the `Color32` consts and converts them to the MacOS specified versions.\
 /// The color will be unchanged if it's not one of the consts.\
 /// https://developer.apple.com/design/human-interface-guidelines/color#Specifications
-pub fn color32_to_macos_color(color: Color32) -> Color32 {
+pub fn get_macos_color(color: Color32) -> Color32 {
+    #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
+    return dynamic::color32_to_macos_color(color);
+
+    #[cfg(not(feature = "dynamic-mac-colors"))]
+    static_macos_color(color)
+}
+
+fn static_macos_color(color: Color32) -> Color32 {
     if *DARK_LIGHT_MODE == dark_light::Mode::Dark {
         match color {
             Color32::BLUE => Color32::from_rgb(10, 132, 255),
@@ -76,7 +84,7 @@ pub fn color32_to_macos_color(color: Color32) -> Color32 {
             Color32::ORANGE => Color32::from_rgb(255, 159, 10),
             Color32::RED => Color32::from_rgb(255, 69, 58),
             Color32::YELLOW => Color32::from_rgb(255, 214, 10),
-            _ => match_dark_light_colors(color)
+            _ => match_dark_light_colors(color),
         }
     } else {
         match color {
@@ -87,14 +95,14 @@ pub fn color32_to_macos_color(color: Color32) -> Color32 {
             Color32::ORANGE => Color32::from_rgb(255, 149, 0),
             Color32::RED => Color32::from_rgb(255, 59, 48),
             Color32::YELLOW => Color32::from_rgb(255, 204, 0),
-            _ => match_dark_light_colors(color)
+            _ => match_dark_light_colors(color),
         }
     }
 }
 
 /// dark colors are the light mode accessible colors, light colors are the inverse.\
 /// The color will be unchanged if it's not one of the consts.
-const fn match_dark_light_colors(color: Color32) -> Color32 {
+pub(crate) const fn match_dark_light_colors(color: Color32) -> Color32 {
     match color {
         Color32::DARK_BLUE => Color32::from_rgb(0, 64, 221),
         Color32::DARK_GRAY => Color32::from_rgb(105, 105, 110),
@@ -104,7 +112,7 @@ const fn match_dark_light_colors(color: Color32) -> Color32 {
         Color32::LIGHT_GRAY => Color32::from_rgb(152, 152, 157),
         Color32::LIGHT_RED => Color32::from_rgb(255, 105, 97),
         Color32::LIGHT_YELLOW => Color32::from_rgb(255, 212, 38),
-        _ => color
+        _ => color,
     }
 }
 
@@ -117,7 +125,6 @@ pub enum AccentColor {
     Graphite,
     Red,
     Orange,
-    // ilegible
     Yellow,
     Green,
     Blue,

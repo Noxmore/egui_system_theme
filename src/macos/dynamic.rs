@@ -1,12 +1,12 @@
 #![cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
 
 use crate::*;
-pub use ffi::{Colors, colors};
+pub(crate) use ffi::{colors, Colors};
 
 #[swift_bridge::bridge]
 mod ffi {
     // The difarent things you can request the color of
-    pub enum Colors {
+    pub(crate) enum Colors {
         Text,
         Link,
         Black,
@@ -45,7 +45,11 @@ mod ffi {
 fn swift_to_color32(colors: (f64, f64, f64, f64)) -> Color32 {
     // maitily the 0-1 to make it 0-255
     // 0.? * 255.999 as u8
-    Color32::from_rgb((colors.0 * 255.999) as u8, (colors.1 * 255.999) as u8, (colors.2 * 255.999) as u8)    
+    Color32::from_rgb(
+        (colors.0 * 255.999) as u8,
+        (colors.1 * 255.999) as u8,
+        (colors.2 * 255.999) as u8,
+    )
 }
 
 /// get the ui color from swift
@@ -97,4 +101,18 @@ pub(crate) fn style(style: &mut Style) -> Result<(), Box<dyn Error>> {
     style.visuals.widgets.hovered.bg_fill = highlight_fill;
 
     Ok(())
+}
+
+pub(crate) fn color32_to_macos_color(color: Color32) -> Color32 {
+    match color {
+        Color32::BLUE => get_color!(Colors::Blue),
+        Color32::BROWN => get_color!(Colors::Brown),
+        Color32::GRAY => get_color!(Colors::Gray),
+        Color32::GREEN => get_color!(Colors::Green),
+        Color32::ORANGE => get_color!(Colors::Orange),
+        Color32::RED => get_color!(Colors::Red),
+        Color32::YELLOW => get_color!(Colors::Yellow),
+        Color32::TRANSPARENT => get_color!(Colors::Clear),
+        _ => macos::match_dark_light_colors(color),
+    }
 }

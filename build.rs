@@ -5,23 +5,24 @@ fn main() {
 
 #[cfg(all(feature = "dynamic-mac-colors", target_os = "macos"))]
 fn main() {
-    use std::process::Command;
     use std::io::Write;
+    use std::process::Command;
 
     let _ = std::fs::create_dir("./swift_bridge");
     let bridging_header = std::fs::File::create("./swift_bridge/bridging-header.h");
 
     let _ = match bridging_header {
         Ok(mut f) => f.write_all(
-        r#"
-        #ifndef BRIDGING_HEADER_H
-        #define BRIDGING_HEADER_H
+            r#"
+            #ifndef BRIDGING_HEADER_H
+            #define BRIDGING_HEADER_H
 
-        #import "./SwiftBridgeCore.h"
-        #import "./egui_system_theme/egui_system_theme.h"
+            #import "./SwiftBridgeCore.h"
+            #import "./egui_system_theme/egui_system_theme.h"
 
-        #endif BRIDGING_HEADER_H
-        "#.as_bytes()
+            #endif BRIDGING_HEADER_H
+            "#
+            .as_bytes(),
         ),
         Err(_) => Ok(()),
     };
@@ -34,16 +35,14 @@ fn main() {
 
     // 2. Compile Swift library
     let mut cmd = Command::new("swiftc");
-    
+
     cmd.arg("-emit-library")
         .arg("-static")
-
         .arg("-module-name")
         .arg("swift_colors")
 
         .arg("-import-objc-header")
         .arg("./swift_bridge/bridging-header.h")
-
         .arg("./src/macos/colors.swift")
         .arg("./swift_bridge/egui_system_theme/egui_system_theme.swift")
         .arg("./swift_bridge/SwiftBridgeCore.swift");
@@ -61,9 +60,9 @@ fn main() {
     if !exit_status.status.success() {
         panic!(
             r#"
-Stderr: {}
-Stdout: {}
-"#,
+            Stderr: {}
+            Stdout: {}
+            "#,
             String::from_utf8(exit_status.stderr).unwrap(),
             String::from_utf8(exit_status.stdout).unwrap(),
         )

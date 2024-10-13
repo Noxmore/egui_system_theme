@@ -28,7 +28,7 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
             dark_light::Mode::Default => Visuals::default(),
             dark_light::Mode::Dark => Visuals::dark(),
             dark_light::Mode::Light => Visuals::light(),
-        }, 
+        },
         ..Style::default()
     };
 
