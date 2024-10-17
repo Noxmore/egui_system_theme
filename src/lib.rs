@@ -23,11 +23,13 @@ use linux as platform;
 pub(crate) static DARK_LIGHT_MODE: Lazy<dark_light::Mode> = Lazy::new(dark_light::detect);
 
 pub fn system_theme() -> Result<Style, Box<dyn Error>> {
-    let mut style = Style::default();
-    style.visuals = match *DARK_LIGHT_MODE {
-        dark_light::Mode::Default => Visuals::default(),
-        dark_light::Mode::Dark => Visuals::dark(),
-        dark_light::Mode::Light => Visuals::light(),
+    let mut style = Style {
+        visuals: match *DARK_LIGHT_MODE {
+            dark_light::Mode::Default => Visuals::default(),
+            dark_light::Mode::Dark => Visuals::dark(),
+            dark_light::Mode::Light => Visuals::light(),
+        },
+        ..Style::default()
     };
 
     platform::style(&mut style)?;
@@ -40,12 +42,11 @@ pub fn system_theme() -> Result<Style, Box<dyn Error>> {
 pub fn titlebar_extension<R>(ctx: &Context, id: impl Into<Id>, menubar_style: bool, add_contents: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     let id = id.into();
     
-    TopBottomPanel::top(id)
-        .frame(
-            Frame::side_top_panel(&ctx.style())
-                .fill(ctx.style().visuals.titlebar(ctx.input(|i| i.focused)))
-                .inner_margin(Margin::same(0.))
-        )
+    TopBottomPanel::top(id).frame(
+        Frame::side_top_panel(&ctx.style())
+            .fill(ctx.style().visuals.titlebar(ctx.input(|i| i.focused)))
+            .inner_margin(Margin::same(0.))
+    )
         .show(ctx, |ui| {
             let title_bar_response =
                 ui.interact(ui.max_rect(), id.with("interaction"), Sense::click_and_drag());
@@ -104,6 +105,7 @@ impl VisualsExt for Visuals {
 pub(crate) trait Color32Ext {
     fn mutate(self, towards: Rgba, amount: f32) -> Self;
 }
+
 impl Color32Ext for Color32 {
     fn mutate(self, towards: Rgba, amount: f32) -> Self {
         lerp(Rgba::from(self)..=towards, amount).into()
