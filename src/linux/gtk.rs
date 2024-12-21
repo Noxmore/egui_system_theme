@@ -327,6 +327,9 @@ pub fn style_gtk_css(style: &mut Style, path: &Path, ctx: &mut GtkCssParseContex
                 // Not sure if there's a better way to do this
                 let dir_path = path.parent().expect("Invalid css path, this is a bug!");
                 style_gtk_css(style, &dir_path.join(rule.url.to_string()), ctx)?;
+                // rule.
+                // TODO url downloading
+                // TODO actually resource:// retrieving
             }
             CssRule::Style(rule) => style_gtk_rule(style, ctx, rule)?,
             CssRule::Unknown(rule) => {

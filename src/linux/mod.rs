@@ -75,6 +75,7 @@ pub fn style_kde(style: &mut Style) -> Result<(), Box<dyn Error>> {
     set_color!(style.visuals.window_fill, "Colors:Window", "BackgroundNormal");
     set_stroke!(style.visuals.window_stroke, "ColorEffects:Inactive", "Color", 1.);
 
+    // TODO
     set_color!(style.visuals.code_bg_color, "Colors:View", "BackgroundNormal");
     set_color!(style.visuals.extreme_bg_color, "Colors:View", "BackgroundNormal");
     set_color!(style.visuals.faint_bg_color, "Colors:Tooltip", "BackgroundNormal"); // This is Header on breeze

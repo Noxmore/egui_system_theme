@@ -101,7 +101,7 @@ impl VisualsExt for Visuals {
     }
 }
 
-pub(crate) trait Color32Ext {
+pub trait Color32Ext {
     fn mutate(self, towards: Rgba, amount: f32) -> Self;
 }
 impl Color32Ext for Color32 {
