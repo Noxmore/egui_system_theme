@@ -37,13 +37,24 @@ impl SystemThemeDemoApp {
 impl App for SystemThemeDemoApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         egui_system_theme::titlebar_extension(ctx, "menu_bar_real", true, |ui| {
-            ui.menu_button("File", |ui| {
-                if ui.button("New").clicked()
-                    || ui.button("Open").clicked()
-                    || ui.button(":)").clicked()
-                {
-                    ui.close_menu();
-                }
+            ui.horizontal(|ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("New").clicked()
+                        || ui.button("Open").clicked()
+                        || ui.button(":)").clicked()
+                    {
+                        ui.close_menu();
+                    };
+                });
+
+                ui.menu_button("Set Style", |ui| {
+                    if ui.button("Default").clicked() {
+                        ctx.set_style(Style::default());
+                    }
+                    if ui.button("System").clicked() {
+                        ctx.set_style(egui_system_theme::system_theme().unwrap());
+                    }
+                });
             });
         });
 
